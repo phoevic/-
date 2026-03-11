@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>반짝반짝 출석부</title>
+    <title>출석하자구</title>
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -47,7 +47,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #fff; display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 9999;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.4s ease-out;
         }
         
         .floating { animation: floating 3s ease-in-out infinite; }
@@ -77,7 +77,7 @@
             border-bottom-width: 1px;
         }
 
-        /* 고양이 아이콘 텍스트 스타일 (특수 문자 입력 시 고양이로 변환) */
+        /* 고양이 아이콘 텍스트 스타일 */
         .cat-deco {
             color: var(--primary);
             font-size: 1.5rem;
@@ -89,12 +89,37 @@
             font-size: 0.9rem;
             opacity: 0.6;
         }
+        
+        /* 로딩 바 애니메이션 */
+        .loading-bar-container {
+            width: 150px;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .loading-bar {
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            animation: loading-progress 2s infinite ease-in-out;
+            transform-origin: left;
+        }
+        @keyframes loading-progress {
+            0% { transform: scaleX(0); }
+            50% { transform: scaleX(1); }
+            100% { transform: scaleX(0); transform-origin: right; }
+        }
     </style>
 </head>
 <body class="antialiased">
     <div id="loading-screen">
-        <div class="text-rose-400 text-6xl mb-6 floating">†</div> <!-- 고양이 아이콘 -->
-        <div class="text-rose-500 font-bold text-2xl">로딩 중이다냥.. ¢</div>
+        <div class="text-rose-400 text-6xl mb-6 floating">†</div> 
+        <div class="text-rose-500 font-bold text-2xl tracking-tighter">시스템을 불러오는 중입니다.. ¢</div>
+        <div class="loading-bar-container">
+            <div class="loading-bar"></div>
+        </div>
         <div class="mt-4 text-slate-400 text-sm">잠시만 기다려 주십시오.</div>
     </div>
 
@@ -128,13 +153,16 @@
             useEffect(() => {
                 const loader = document.getElementById('loading-screen');
                 if (loader) {
+                    // 서버 데이터 fetch 시작과 동시에 화면 전환 준비
                     setTimeout(() => {
-                        loader.style.opacity = '0';
-                        setTimeout(() => loader.remove(), 500);
-                    }, 800);
+                        if (!isConfigLoading) {
+                            loader.style.opacity = '0';
+                            setTimeout(() => loader.remove(), 400);
+                        }
+                    }, 500);
                 }
                 fetchConfig();
-            }, [appId]);
+            }, [appId, isConfigLoading]);
 
             const fetchConfig = () => {
                 setIsConfigLoading(true);
@@ -145,7 +173,9 @@
                         else setConfig(prev => ({ ...prev, id: appId }));
                         setIsConfigLoading(false);
                     })
-                    .catch(() => setIsConfigLoading(false));
+                    .catch(() => {
+                        setIsConfigLoading(false);
+                    });
             };
 
             const handleSaveSettings = async (e) => {
@@ -157,7 +187,7 @@
                         mode: 'no-cors',
                         body: JSON.stringify(config)
                     });
-                    setMsg({ type: 'success', text: '설정이 저장되었습니다.' });
+                    setMsg({ type: 'success', text: '설정이 성공적으로 저장되었습니다.' });
                     setTimeout(() => setMsg({ type: '', text: '' }), 3000);
                 } catch (err) {
                     alert('저장 중 오류가 발생했습니다.');
@@ -202,7 +232,7 @@
             if (isConfigLoading) return (
                 <div className="flex flex-col items-center justify-center h-screen space-y-4 bg-[#fdf2f8]">
                     <span className="text-4xl cat-deco">♤</span>
-                    <p className="font-bold text-rose-400 text-xl">정보를 불러오는 중이다냥..</p>
+                    <p className="font-bold text-rose-400 text-xl tracking-tighter">정보를 불러오고 있습니다.</p>
                 </div>
             );
 
@@ -228,7 +258,7 @@
                             <div className="space-y-6 animate-in fade-in zoom-in duration-500">
                                 {/* 시계 섹션 */}
                                 <div className="soft-card p-6 text-center">
-                                    <div className="text-5xl font-bold text-slate-700 tracking-tight mb-2">
+                                    <div className="text-5xl font-bold text-slate-700 tracking-tight mb-2 tabular-nums">
                                         {currentTime.toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}
                                     </div>
                                     <div className="flex items-center justify-center gap-2 text-pink-400 text-sm font-bold">
@@ -260,7 +290,7 @@
                                                placeholder="지각 조퇴 결석 시 사유를 입력하세요" value={reason} onChange={e=>setReason(e.target.value)} />
                                     </div>
                                     <button disabled={isLoading} className="bubble-btn w-full bg-pink-400 hover:bg-pink-500 text-white font-bold py-5 rounded-3xl shadow-lg transition-all text-xl mt-4 flex items-center justify-center gap-2">
-                                        {isLoading ? <i className="fa-solid fa-spinner loading-spinner"></i> : "출석 완료했다냥!"}
+                                        {isLoading ? <i className="fa-solid fa-spinner loading-spinner"></i> : "출석 완료하기"}
                                     </button>
                                 </form>
                             </div>
