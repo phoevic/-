@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>출석하자구</title>
+    <title>반짝반짝 출석부</title>
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome 6.5.1 (장식용) -->
+    <!-- Font Awesome 6.5.1 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
@@ -36,7 +36,6 @@
         
         body {
             background-color: var(--bg);
-            /* 모눈종이 패턴 배경 */
             background-image: 
                 linear-gradient(#f9a8d415 1px, transparent 1px),
                 linear-gradient(90deg, #f9a8d415 1px, transparent 1px);
@@ -47,7 +46,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #fff; display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 9999;
-            transition: opacity 0.4s ease-out;
+            transition: opacity 0.5s ease;
         }
         
         .floating { animation: floating 3s ease-in-out infinite; }
@@ -56,9 +55,6 @@
             50% { transform: translateY(-10px) rotate(3deg); }
             100% { transform: translateY(0px) rotate(0deg); }
         }
-
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .loading-spinner { animation: spin 1s linear infinite; }
 
         .soft-card {
             background: rgba(255, 255, 255, 0.9);
@@ -77,34 +73,12 @@
             border-bottom-width: 1px;
         }
 
-        /* 고양이 아이콘 텍스트 스타일 */
-        .cat-deco {
-            color: var(--primary);
-            font-size: 1.5rem;
-            display: inline-block;
-            margin: 0 4px;
-        }
-
-        input::placeholder, textarea::placeholder {
-            font-size: 0.9rem;
-            opacity: 0.6;
-        }
-        
-        /* 로딩 바 애니메이션 */
         .loading-bar-container {
-            width: 150px;
-            height: 4px;
-            background: #eee;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 20px;
+            width: 150px; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; margin-top: 20px;
         }
         .loading-bar {
-            width: 100%;
-            height: 100%;
-            background: var(--primary);
-            animation: loading-progress 2s infinite ease-in-out;
-            transform-origin: left;
+            width: 100%; height: 100%; background: var(--primary);
+            animation: loading-progress 2s infinite ease-in-out; transform-origin: left;
         }
         @keyframes loading-progress {
             0% { transform: scaleX(0); }
@@ -136,6 +110,12 @@
             const [isLoading, setIsLoading] = useState(false);
             const [isConfigLoading, setIsConfigLoading] = useState(true);
             const [currentTime, setCurrentTime] = useState(new Date());
+            
+            // 비밀번호 모달 관련 상태
+            const [showPassModal, setShowPassModal] = useState(false);
+            const [passInput, setPassInput] = useState('');
+            const [passError, setPassError] = useState(false);
+
             const [config, setConfig] = useState({
                 id: appId, className: '', formUrl: '', passcode: '0000',
                 studentIdEntry: '', nameEntry: '', reasonEntry: ''
@@ -151,29 +131,34 @@
             }, []);
 
             useEffect(() => {
-                const loader = document.getElementById('loading-screen');
-                if (loader) {
-                    // 서버 데이터 fetch 시작과 동시에 화면 전환 준비
-                    setTimeout(() => {
-                        if (!isConfigLoading) {
-                            loader.style.opacity = '0';
-                            setTimeout(() => loader.remove(), 400);
-                        }
-                    }, 500);
+                if (!isConfigLoading) {
+                    const loader = document.getElementById('loading-screen');
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.remove(), 500);
+                    }
                 }
+            }, [isConfigLoading]);
+
+            useEffect(() => {
                 fetchConfig();
-            }, [appId, isConfigLoading]);
+            }, [appId]);
 
             const fetchConfig = () => {
                 setIsConfigLoading(true);
                 fetch(`${GOOGLE_SCRIPT_URL}?id=${appId}`)
                     .then(res => res.json())
                     .then(data => {
-                        if (data.className) setConfig(data);
-                        else setConfig(prev => ({ ...prev, id: appId }));
-                        setIsConfigLoading(false);
+                        if (data && data.className) {
+                            setConfig(data);
+                        } else {
+                            setConfig(prev => ({ ...prev, id: appId }));
+                        }
                     })
                     .catch(() => {
+                        setConfig(prev => ({ ...prev, id: appId }));
+                    })
+                    .finally(() => {
                         setIsConfigLoading(false);
                     });
             };
@@ -226,15 +211,31 @@
             const copyShareLink = () => {
                 const url = `${window.location.origin}${window.location.pathname}?id=${appId}`;
                 navigator.clipboard.writeText(url);
-                alert('링크가 복사되었습니다.');
+                setMsg({ type: 'success', text: '링크가 복사되었습니다.' });
+                setTimeout(() => setMsg({ type: '', text: '' }), 2000);
             };
 
-            if (isConfigLoading) return (
-                <div className="flex flex-col items-center justify-center h-screen space-y-4 bg-[#fdf2f8]">
-                    <span className="text-4xl cat-deco">♤</span>
-                    <p className="font-bold text-rose-400 text-xl tracking-tighter">정보를 불러오고 있습니다.</p>
-                </div>
-            );
+            // 비밀번호 확인 로직
+            const handleSettingsAccess = () => {
+                if (view === 'settings') return; // 이미 설정창이면 무시
+                setShowPassModal(true);
+                setPassInput('');
+                setPassError(false);
+            };
+
+            const verifyPassword = (e) => {
+                e.preventDefault();
+                const targetPass = config.passcode || '0000';
+                if (passInput === targetPass) {
+                    setShowPassModal(false);
+                    setView('settings');
+                } else {
+                    setPassError(true);
+                    setPassInput('');
+                }
+            };
+
+            if (isConfigLoading) return null;
 
             return (
                 <div className="max-w-md mx-auto min-h-screen flex flex-col relative bg-[#fdf2f8]/30 overflow-hidden border-x border-pink-100">
@@ -256,7 +257,6 @@
                     <main className="relative z-10 p-6 flex-grow pb-32">
                         {view === 'checkin' ? (
                             <div className="space-y-6 animate-in fade-in zoom-in duration-500">
-                                {/* 시계 섹션 */}
                                 <div className="soft-card p-6 text-center">
                                     <div className="text-5xl font-bold text-slate-700 tracking-tight mb-2 tabular-nums">
                                         {currentTime.toLocaleTimeString('ko-KR', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}
@@ -266,7 +266,6 @@
                                     </div>
                                 </div>
 
-                                {/* 입력 폼 */}
                                 <form onSubmit={handleCheckIn} className="space-y-4">
                                     <div className="space-y-1">
                                         <label className="text-sm font-bold text-slate-500 ml-4 flex items-center gap-2">
@@ -334,6 +333,15 @@
                                             <input className="w-full p-3 border-b-2 border-pink-50 outline-none focus:border-pink-300 bg-transparent font-bold" 
                                                    value={config.reasonEntry} onChange={e=>setConfig({...config, reasonEntry:e.target.value})} />
                                         </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-pink-500 ml-1 flex items-center gap-1">
+                                                <span>🔒</span> 관리자 비밀번호 변경
+                                            </label>
+                                            <input type="password" 
+                                                   className="w-full p-3 border-b-2 border-pink-100 outline-none focus:border-pink-300 bg-pink-50/30 font-bold" 
+                                                   placeholder="초기 비번: 0000"
+                                                   value={config.passcode} onChange={e=>setConfig({...config, passcode:e.target.value})} required />
+                                        </div>
                                     </div>
                                     
                                     <button disabled={isLoading} className="bubble-btn w-full bg-slate-700 text-white font-bold py-4 rounded-2xl shadow-md mt-4">
@@ -350,13 +358,51 @@
                         )}
                     </main>
 
+                    {/* 비밀번호 입력 모달 */}
+                    {showPassModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-pink-900/20 backdrop-blur-sm animate-in fade-in duration-300">
+                            <div className="soft-card w-full max-w-xs p-8 text-center animate-in zoom-in duration-300">
+                                <div className="text-4xl mb-4">†</div>
+                                <h3 className="text-xl font-bold text-slate-700 mb-2">비밀번호 확인</h3>
+                                <p className="text-sm text-slate-400 mb-6 font-bold">선생님 전용 메뉴입니다.<br/>비밀번호를 입력해 주세요.</p>
+                                
+                                <form onSubmit={verifyPassword} className="space-y-4">
+                                    <input 
+                                        type="password"
+                                        autoFocus
+                                        className={`w-full p-4 rounded-xl border-2 outline-none text-center text-2xl tracking-widest font-bold transition-all ${passError ? 'border-rose-400 bg-rose-50 animate-bounce' : 'border-pink-100 bg-pink-50/30 focus:border-pink-400'}`}
+                                        placeholder="●●●●"
+                                        value={passInput}
+                                        onChange={(e) => {
+                                            setPassInput(e.target.value);
+                                            setPassError(false);
+                                        }}
+                                    />
+                                    {passError && <p className="text-xs text-rose-500 font-bold tracking-tighter">비밀번호가 틀렸습니다냥! ¢</p>}
+                                    
+                                    <div className="grid grid-cols-2 gap-3 pt-2">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowPassModal(false)}
+                                            className="p-4 rounded-xl bg-slate-100 text-slate-500 font-bold bubble-btn"
+                                        >취소</button>
+                                        <button 
+                                            type="submit"
+                                            className="p-4 rounded-xl bg-pink-400 text-white font-bold bubble-btn"
+                                        >확인</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
                     {/* 하단 내비게이션 바 */}
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-white/90 backdrop-blur-md border border-pink-100 flex justify-around p-3 rounded-[2.5rem] shadow-xl z-50">
                         <button onClick={()=>setView('checkin')} className={`flex flex-col items-center gap-1 px-8 py-2 rounded-full transition-all ${view==='checkin' ? 'bg-pink-400 text-white shadow-md scale-105' : 'text-slate-300'}`}>
                             <span className="text-2xl mb-1">{view==='checkin' ? '🐾' : '📝'}</span>
                             <span className="text-xs font-bold uppercase tracking-widest">출석 확인</span>
                         </button>
-                        <button onClick={()=>setView('settings')} className={`flex flex-col items-center gap-1 px-8 py-2 rounded-full transition-all ${view==='settings' ? 'bg-pink-200 text-white shadow-md scale-105' : 'text-slate-300'}`}>
+                        <button onClick={handleSettingsAccess} className={`flex flex-col items-center gap-1 px-8 py-2 rounded-full transition-all ${view==='settings' ? 'bg-pink-200 text-white shadow-md scale-105' : 'text-slate-300'}`}>
                             <span className="text-2xl mb-1">{view==='settings' ? '⚙️' : '🎀'}</span>
                             <span className="text-xs font-bold uppercase tracking-widest">환경 설정</span>
                         </button>
