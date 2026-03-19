@@ -5,6 +5,7 @@ const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './icon-512.png',  // 이 줄을 추가하세요!
   'https://cdn.jsdelivr.net/gh/projectnoonnu/2411-3@1.0/Ownglyph_ParkDaHyun.woff2',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
