@@ -33,7 +33,6 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
-        // 본인의 배포된 GAS URL을 입력하세요
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyqkfbtpB_OBD8SrmkICxyeHTWoPXZ4cdpPe9AoyJQNQL7679SxGXh7xYCgu1laEsHA/exec";
 
         function App() {
@@ -76,25 +75,28 @@
                 e.preventDefault();
                 setIsLoading(true);
                 try {
+                    // 중요: mode: 'no-cors'를 추가하여 구글 스크립트와의 CORS 이슈를 방지합니다.
                     await fetch(GOOGLE_SCRIPT_URL, { 
                         method: 'POST', 
+                        mode: 'no-cors',
                         body: JSON.stringify({ ...config, id: appId }) 
                     });
-                    showToast('success', '설정이 저장되었습니다! ✨');
+                    showToast('success', '설정이 클라우드에 저장되었습니다! ✨');
                     setTimeout(fetchConfig, 1000); 
                     setView('checkin');
-                } catch (err) { alert('저장 실패!'); }
-                finally { setIsLoading(false); }
+                } catch (err) { 
+                    console.error(err);
+                    alert('저장 실패!'); 
+                } finally { setIsLoading(false); }
             };
 
             const handleCheckIn = async (e) => {
                 e.preventDefault();
                 if (!config.formUrl) return alert('⚙️ 설정에서 구글 폼 주소를 입력해주세요!');
-                if (!config.studentIdEntry || !config.nameEntry) return alert('⚙️ 설정에서 entry 번호들을 입력해주세요!');
+                if (!config.studentIdEntry || !config.nameEntry) return alert('⚙️ 설정에서 entry 번호를 입력하고 저장해주세요!');
 
                 setIsLoading(true);
                 try {
-                    // URL 정제 (viewform -> formResponse)
                     let actionUrl = config.formUrl.trim().split('?')[0];
                     actionUrl = actionUrl.replace('/viewform', '/formResponse').replace('/edit', '/formResponse');
                     if(!actionUrl.endsWith('/formResponse')) actionUrl += '/formResponse';
@@ -102,23 +104,37 @@
                     const params = new URLSearchParams();
                     const formatKey = (key) => {
                         const k = String(key).trim();
+                        if(!k) return "";
                         return k.startsWith('entry.') ? k : `entry.${k}`;
                     };
 
-                    params.append(formatKey(config.studentIdEntry), studentId.trim());
-                    params.append(formatKey(config.nameEntry), studentName.trim());
-                    if (config.reasonEntry) params.append(formatKey(config.reasonEntry), reason.trim());
+                    const idKey = formatKey(config.studentIdEntry);
+                    const nameKey = formatKey(config.nameEntry);
+                    const reasonKey = formatKey(config.reasonEntry);
 
-                    await fetch(actionUrl, { method: 'POST', mode: 'no-cors', body: params.toString() });
+                    if(!idKey || !nameKey) throw new Error("Entry ID 누락");
+
+                    params.append(idKey, studentId.trim());
+                    params.append(nameKey, studentName.trim());
+                    if (reasonKey && reason) params.append(reasonKey, reason.trim());
+
+                    await fetch(actionUrl, { 
+                        method: 'POST', 
+                        mode: 'no-cors', 
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params.toString() 
+                    });
                     
                     showToast('success', `${studentName}님, 출석 완료! 🍀`);
                     setStudentId(''); setStudentName(''); setReason('');
-                } catch (err) { showToast('error', '전송 실패!'); }
-                finally { setIsLoading(false); }
+                } catch (err) { 
+                    showToast('error', '전송 실패! 설정의 entry 번호를 확인하세요.'); 
+                } finally { setIsLoading(false); }
             };
 
             const fetchHistory = (e) => {
                 e.preventDefault();
+                if(!config.responseSheetId) return alert('⚙️ 설정에서 응답 시트 ID를 입력해주세요!');
                 setIsLoading(true);
                 setHistoryData(null);
                 fetch(`${GOOGLE_SCRIPT_URL}?type=history&appId=${appId}&studentId=${studentId}&studentName=${studentName}`)
