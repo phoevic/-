@@ -1,0 +1,17 @@
+{
+  "name": "26출결",
+  "short_name": "출결앱",
+  "description": "구글 폼 연동 출석 관리 시스템",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#fdf2f8",
+  "theme_color": "#ff4d6d",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5663/5663119.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
