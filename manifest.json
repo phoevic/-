@@ -1,8 +1,8 @@
 {
-  "name": "출결 관리🍀",
+  "name": "출석 관리🍀",
   "short_name": "출결앱",
-  "description": "구글 폼 연동 출석 관리 시스템",
-  "start_url": ".",
+  "description": "구글 폼 연동 출석 관리",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#fdf2f8",
   "theme_color": "#ff4d6d",
