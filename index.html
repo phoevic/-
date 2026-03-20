@@ -8,7 +8,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="출결관리">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5663/5123119.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5663/5663119.png">
+    
     <link rel="manifest" href="manifest.json">
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -18,46 +19,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
-        /* 1. 최후의 수단: 폰트를 Base64로 내장 (파일 로딩 실패 원천 차단) */
-        /* 주소 대신 데이터 자체를 넣었으므로 인터넷 연결 불안정과 상관없이 무조건 뜹니다. */
         @font-face {
             font-family: 'OngleipParkDahyeon';
             src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2411-3@1.0/Ownglyph_ParkDaHyun.woff2') format('woff2');
-            font-weight: normal; 
-            font-style: normal;
-            font-display: block;
+            font-weight: normal; font-display: swap;
         }
-
-        /* 2. 브라우저의 모든 고집을 꺾는 설정 */
-        html, body, #root, div, span, p, h1, h2, h3, input, textarea, button, select, i, b, strong {
-            font-family: 'OngleipParkDahyeon', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif !important;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
-            letter-spacing: -0.02em !important;
-        }
-
-        /* 3. 숫자와 입력창 정밀 타격 */
-        .tabular-nums, input::placeholder, textarea::placeholder {
-            font-family: 'OngleipParkDahyeon' !important;
-        }
-
-        input, textarea {
-            -webkit-appearance: none; /* 아이폰 기본 필드 스타일 제거 */
-            border-radius: 2rem;
-        }
-
+        :root { --primary: #ff85a1; --bg: #fdf2f8; }
+        * { font-family: 'OngleipParkDahyeon', sans-serif !important; letter-spacing: -0.02em; }
         body {
-            background-color: #fdf2f8;
+            background-color: var(--bg);
             background-image: linear-gradient(#f9a8d415 1px, transparent 1px), linear-gradient(90deg, #f9a8d415 1px, transparent 1px);
             background-size: 20px 20px;
             -webkit-tap-highlight-color: transparent; 
-            user-select: none; 
-            -webkit-user-select: none;
+            user-select: none; -webkit-user-select: none;
         }
-
         input, textarea { user-select: auto !important; -webkit-user-select: auto !important; }
-
         .soft-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-radius: 2.5rem; border: 2px solid white; box-shadow: 0 10px 25px -5px rgba(244, 114, 182, 0.1); }
         .bubble-btn { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-bottom: 4px solid rgba(0,0,0,0.1); }
         .bubble-btn:active { transform: scale(0.96) translateY(2px); border-bottom-width: 1px; }
@@ -67,9 +43,15 @@
 </head>
 <body>
     <div id="root"></div>
+
     <script>
+        // 서비스 워커 등록
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); });
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW 등록 성공!', reg))
+                    .catch(err => console.log('SW 등록 실패!', err));
+            });
         }
     </script>
 
@@ -78,16 +60,7 @@
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyqkfbtpB_OBD8SrmkICxyeHTWoPXZ4cdpPe9AoyJQNQL7679SxGXh7xYCgu1laEsHA/exec";
 
         function App() {
-            const [appId] = useState(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const idFromUrl = urlParams.get('id');
-                if (idFromUrl) {
-                    localStorage.setItem('saved_attendance_id', idFromUrl);
-                    return idFromUrl;
-                }
-                return localStorage.getItem('saved_attendance_id') || 'default';
-            });
-
+            const [appId] = useState(new URLSearchParams(window.location.search).get('id') || 'default');
             const [view, setView] = useState('checkin'); 
             const [isLoading, setIsLoading] = useState(false);
             const [currentTime, setCurrentTime] = useState(new Date());
@@ -145,16 +118,19 @@
                 try {
                     let actionUrl = config.formUrl.trim().split('?')[0];
                     actionUrl = actionUrl.replace('/viewform', '/formResponse').replace('/edit', '/formResponse');
+                    
                     const params = new URLSearchParams();
                     const formatKey = (key) => {
                         const k = String(key).trim();
                         return k.startsWith('entry.') ? k : `entry.${k}`;
                     };
+
                     params.append(formatKey(config.studentIdEntry), studentId.trim());
                     params.append(formatKey(config.nameEntry), studentName.trim());
                     if (config.reasonEntry) params.append(formatKey(config.reasonEntry), reason.trim());
 
                     await fetch(actionUrl, { method: 'POST', mode: 'no-cors', body: params.toString() });
+                    
                     showToast('success', `${studentName}님, 출석 완료! 🍀`);
                     setStudentId(''); setStudentName(''); setReason('');
                 } catch (err) { showToast('error', '전송 실패!'); }
@@ -189,7 +165,6 @@
                         <div className="inline-block px-8 py-3 rounded-full bg-white shadow-sm border border-pink-100 mb-4">
                             <h1 className="text-2xl font-bold text-[#ff4d6d]">♤ {config.className || "출석 관리"} ♧</h1>
                         </div>
-                        <div className="text-[10px] text-pink-300 opacity-50">ID: {appId}</div>
                     </header>
 
                     <main className="p-6 flex-grow overflow-y-auto">
@@ -248,7 +223,6 @@
                                     <input type="password" title="pass" className="w-full p-3 border-b-2 border-pink-50 outline-none" value={config.passcode} onChange={e=>setConfig({...config, passcode:e.target.value})} />
                                     <button className="bubble-btn w-full bg-slate-700 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg">클라우드 설정 저장</button>
                                 </form>
-                                <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="w-full text-[10px] text-slate-300 mt-10">ID 초기화 (재접속 필요)</button>
                             </div>
                         )}
                     </main>
